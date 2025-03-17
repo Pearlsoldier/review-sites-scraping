@@ -72,6 +72,24 @@ def scrape_review_titles(detail_url: str) -> list:
     return review_titles_list
 
 
+def get_titles():
+    """
+    指定した順序でキーのリストを返す
+    """
+    return [
+        "満足している点",
+        "不満な点",
+        "総評",
+        "デザイン",
+        "走行性能",
+        "乗り心地",
+        "積載性",
+        "燃費",
+        "価格",
+        "故障経験",
+    ]
+
+
 def scrape_review_contents(detail_url: str) -> list:
     """
     詳細ページから、レビューの内容を取得する
@@ -97,26 +115,47 @@ def match_title_and_content(
     return review_dict
 
 
-def scrap_review(detail_url_list: list) -> dict:
+def collect_all_titles(review_titles_list):
+    return sorted(list(set(review_titles_list)))
+
+
+def scrap_all_reviews(detail_url_list: list) -> list:
+    all_reviews_list = []
     for detail_url in detail_url_list:
         review_titles_list = scrape_review_titles(detail_url)
         review_contents_list = scrape_review_contents(detail_url)
-        reviews_dict = match_title_and_content(review_titles_list, review_contents_list)
-    return reviews_dict
+        all_reviews = match_title_and_content(review_titles_list, review_contents_list)
+        all_reviews_list.append(all_reviews)
+    collect_all_titles(review_titles_list)
+    return all_reviews_list
+
+
+def create_reviews_dict(all_reviews_list):
+    """
+    タイトルをキーとして、コメントをバリューに辞書
+    """
+    total_reviews = []
+    key_titles = get_titles()
+    for review in all_reviews_list:
+        reviews_dict = {}
+        for key in key_titles:
+            # キーが存在しない場合は空文字列を設定
+            reviews_dict[key] = review.get(key, "")
+        total_reviews.append(reviews_dict)
+    return total_reviews
 
 
 def main():
     base_url = "https://minkara.carview.co.jp/car/"
     review_url = "https://minkara.carview.co.jp/car/toyota/crown_crossover/review/"
     n = 1
-
     target_model = split_review_model(base_url, review_url)
     pagenation_url_list = make_pagenation_url(base_url, target_model, n)
     detail_path_list = search_detail_path(target_model, pagenation_url_list)
     detail_url_list = make_full_detail_url(base_url, detail_path_list)
-    print(f"list: {detail_url_list}")
-    review = scrap_review(detail_url_list)
-    print(review)
+    all_reviews_list = scrap_all_reviews(detail_url_list)
+    total = create_reviews_dict(all_reviews_list)
+    print(total[0])
 
 
 if __name__ == "__main__":
