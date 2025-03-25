@@ -12,27 +12,27 @@ def split_review_model(base_url, review_url: str) -> str:
     return target_model
 
 
-def make_pagenation_url(base_url: str, target_model: str, n: int) -> list:
+def make_pagination_url(base_url: str, target_model: str, n: int) -> list:
     """
     ページネーションのurlを作成する
     """
-    pagenation_sauce = base_url + target_model + "/review/?pn="
+    pagination_sauce = base_url + target_model + "/review/?pn="
     # https://minkara.carview.co.jp/car/toyota/crown_crossover/review/?pn=2
-    pagenation_list = []
+    pagination_list = []
 
     for i in range(1, n + 1):
-        pagenation_i = str(i)
-        pagenation_num = pagenation_sauce + pagenation_i
-        pagenation_list.append(pagenation_num)
-    return pagenation_list
+        pagination_i = str(i)
+        pagination_num = pagination_sauce + pagination_i
+        pagination_list.append(pagination_num)
+    return pagination_list
 
 
-def search_detail_path(target_model, pagenation_url_list) -> list:
+def search_detail_path(target_model, pagination_url_list) -> list:
     """
     詳細ページへのID情報を含むパスを取得する
     """
-    for pagenation_url in pagenation_url_list:
-        res = requests.get(pagenation_url)
+    for pagination_url in pagination_url_list:
+        res = requests.get(pagination_url)
         soup = BeautifulSoup(res.text, "html.parser")
         extract_href = [
             href_cid.get("href")
@@ -119,7 +119,7 @@ def collect_all_titles(review_titles_list):
     return sorted(list(set(review_titles_list)))
 
 
-def scrap_all_reviews(detail_url_list: list) -> list:
+def scrape_all_reviews(detail_url_list: list) -> list:
     all_reviews_list = []
     for detail_url in detail_url_list:
         review_titles_list = scrape_review_titles(detail_url)
@@ -134,15 +134,17 @@ def create_reviews_dict(all_reviews_list):
     """
     タイトルをキーとして、コメントをバリューに辞書
     """
-    total_reviews = []
+    reviews_dict = {}
+    category_dict = {}
     key_titles = get_titles()
-    for review in all_reviews_list:
-        reviews_dict = {}
-        for key in key_titles:
+    for title in key_titles:
+        category_reviews = []
+        for review in all_reviews_list:
             # キーが存在しない場合は空文字列を設定
-            reviews_dict[key] = review.get(key, "")
-        total_reviews.append(reviews_dict)
-    return total_reviews
+            reviews_dict[title] = review.get(title, "")
+            category_reviews.append(reviews_dict[title])
+        category_dict[title] = category_reviews
+    return category_dict
 
 
 def main():
@@ -150,12 +152,13 @@ def main():
     review_url = "https://minkara.carview.co.jp/car/toyota/crown_crossover/review/"
     n = 1
     target_model = split_review_model(base_url, review_url)
-    pagenation_url_list = make_pagenation_url(base_url, target_model, n)
-    detail_path_list = search_detail_path(target_model, pagenation_url_list)
+    pagination_url_list = make_pagination_url(base_url, target_model, n)
+    detail_path_list = search_detail_path(target_model, pagination_url_list)
     detail_url_list = make_full_detail_url(base_url, detail_path_list)
-    all_reviews_list = scrap_all_reviews(detail_url_list)
-    total = create_reviews_dict(all_reviews_list)
-    print(total[0])
+    all_reviews_list = scrape_all_reviews(detail_url_list)
+    total_reviews_dict = create_reviews_dict(all_reviews_list)
+    for i in total_reviews_dict:
+        print(f"{i} :{total_reviews_dict[i]}")
 
 
 if __name__ == "__main__":
